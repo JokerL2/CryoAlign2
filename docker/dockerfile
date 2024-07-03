@@ -5,8 +5,25 @@ COPY ./CryoAlign_cpp /CryoAlign_cpp
 RUN apt-get update -y \
     && apt-get -y install git cmake libeigen3-dev libboost-all-dev libfftw3-dev libgl1-mesa-glx libpcl-dev libarmadillo-dev libmlpack-dev libflann-dev \
     && apt-get clean \
+    && cd ~/ \
     && git clone https://github.com/MIT-SPARK/TEASER-plusplus.git \
-    && cd /TEASER-plusplus \
+    && cd ~/TEASER-plusplus \
+    && mkdir build \
+    && cd build && cmake .. \
+    && make install \
+    && cd ~/ \
+    && git clone https://github.com/isl-org/Open3D \
+    && cd ~/Open3D \
+    && ./util/install_deps_ubuntu.sh \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
+    && make -j$(nproc) \
+    && make install \
+    && cd ~/ \
+    && git clone https://github.com/rogersce/cnpy.git \
+    && cd ~/cnpy \
+    && mkdir build \
     && cd build && cmake .. \
     && make install \
     && cd /CryoAlign_cpp/sample_cluster/Vectorize \
