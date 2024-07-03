@@ -17,7 +17,7 @@ set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.2")
 # 指定CUDA编译器的路径
 set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.2/bin/nvcc")
 
-list(APPEND CMAKE_PREFIX_PATH "/home/liu/libtorch2.2.1/share/cmake/Torch")
+list(APPEND CMAKE_PREFIX_PATH "~/libtorch/share/cmake/Torch")
 find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH})
 
 # 手动设置 mlpack 的包含目录和库路径
