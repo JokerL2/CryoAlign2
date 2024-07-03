@@ -1,0 +1,14 @@
+FROM nvidia/cuda:12.2.0-cudnn8-devel-ubuntu20.04 AS BUILD 
+
+COPY ./CryoAlign_cpp /CryoAlign_cpp
+
+RUN apt-get update -y \
+    && apt-get -y install git cmake libeigen3-dev libboost-all-dev libfftw3-dev libgl1-mesa-glx libpcl-dev libarmadillo-dev libmlpack-dev libflann-dev \
+    && apt-get clean \
+    && git clone https://github.com/MIT-SPARK/TEASER-plusplus.git \
+    && cd /TEASER-plusplus \
+    && cd build && cmake .. \
+    && make install \
+    && cd /CryoAlign_cpp/sample_cluster/Vectorize \
+    && make && cp Sample ../ \
+    && rm -rf /CryoAlign_cpp/sample_cluster/Vectorize \
