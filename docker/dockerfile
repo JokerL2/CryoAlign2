@@ -2,8 +2,8 @@ FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu20.04 AS BUILD
 
 COPY ./CryoAlign_cpp /CryoAlign_cpp
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get update -y \
-    && apt-get -y install git cmake libeigen3-dev libboost-all-dev libfftw3-dev libgl1-mesa-glx libpcl-dev libarmadillo-dev libmlpack-dev libflann-dev \
+RUN   apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get -y install git cmake libeigen3-dev libboost-all-dev libfftw3-dev libgl1-mesa-glx libpcl-dev libarmadillo-dev libmlpack-dev libflann-dev \
     && apt-get clean \
     && cd ~/ \
     && git clone https://github.com/MIT-SPARK/TEASER-plusplus.git \
