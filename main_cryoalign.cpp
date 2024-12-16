@@ -30,7 +30,7 @@ void Sample_cluster(const std::string& data_dir,const std::string& map_name, flo
 	char sample_command[512];
 	
     // 使用 sprintf 构建命令行字符串
-    sprintf(sample_command, "/home/liu/croy_align_cpp/CryoAlign_cpp_v3/sample_cluster/Sample -a %s -t %.4f -s %.2f > %s", mrc_inputname.c_str(), threshold, voxel_size, sample_file.c_str());
+    sprintf(sample_command, "../sample_cluster/Sample -a %s -t %.4f -s %.2f > %s", mrc_inputname.c_str(), threshold, voxel_size, sample_file.c_str());
 
     // 使用 system() 执行命令
     int ret_val = system(sample_command);
