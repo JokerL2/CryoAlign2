@@ -1,34 +1,20 @@
 ---
-title: "CryoAlign: Accurate global and local 3D alignment of cryo-EM
-  density maps using local spatial structural features"
+title: An efficient global and local mixed Cryo-EM density map retrieval
+  tool based on parallel-accelerated CryoAlign
 ---
 
 # Introduction
 
-Advances in cryo-electron imaging technologies have led to a rapidly
-increasing number of density maps. Alignment and comparison of density
-maps play a crucial role in interpreting structural information, such as
-conformational heterogeneity analysis using global alignment and atomic
-model assembly through local alignment. Here, we propose a fast and
-accurate global and local cryo-electron microscopy density map alignment
-method CryoAlign, which leverages local density feature descriptors to
-capture spatial structure similarities. CryoAlign is the first
-feature-based EM map alignment tool, in which the employment of
-feature-based architecture enables the rapid establishment of point pair
-correspondences and robust estimation of alignment parameters. Extensive
-experimental evaluations demonstrate the superiority of CryoAlign over
-the existing methods in both alignment accuracy and speed.
-
-Here, we offer both global and local registration methods for CryoAlign.
+We developed an alignment-based retrieval tool to perform both global and local retrieval. Our approach adopts parallel-accelerated CryoAlign for high-precision 3D alignment and transforms density maps into point clouds for efficient retrieval and storage. Additionally, a multi-dimension scoring function is introduced to accurately assess structural similarities between superimposed density maps. 
 
 # Installation
 
-The sections below explain how to download and install CryoAlign on your
-computer.
+The sections below explain how to download and install CryoSearch on
+your computer.
 
 ## Prerequisites
 
-Note that CryoAlign depends on and uses several external programs and
+Note that CryoSearch depends on and uses several external programs and
 libraries.If you have a Docker environment with GPU, we strongly
 recommend you to generate image using the dockerfile.
 
@@ -74,14 +60,14 @@ recommend you to generate image using the dockerfile.
 
 -   FFTW
 
-## Installtion of CryoAlign
+## Installtion of CryoSearch
 
-We store the public release versions of CryoAlign on GitHub, a site that
-provides code-development with version control and issue tracking
+We store the public release versions of CryoSearch on GitHub, a site
+that provides code-development with version control and issue tracking
 through the use of git. To clone the repository, run the following
 command
 
-        git clone https://github.com/JokerL2/CryoAlign_cpp.git
+        git clone https://github.com/JokerL2/CryoSearch_cpp.git
 
 For the convenience of environment configuration, we have provided
 Docker images that include the necessary environments and external
@@ -102,10 +88,6 @@ Download libtorch
 cd ~/
 wget https://download.pytorch.org/libtorch/nightly/cu121/libtorch-cxx11-abi-shared-with-deps-2.2.0.dev20231213%2Bcu121.zip
 unzip libtorch-cxx11-abi-shared-with-deps-2.2.0.dev20231213+cu121.zip
-Download MMalign
-cd /CryoAlign_cpp/bin
-wget https://zhanggroup.org/MM-align/bin/module/MMalign.zip
-unzip MMalign.zip
 ```
 
 -   Install CryoSearch
@@ -116,144 +98,103 @@ cmake ..
 make
 ```
 
-## Executable file description
+# Executable file description
 
-After installation, two executable files will be generated,
-corresponding to the two execution steps of CryoAlign.
+After installation, three executable files will be generated,
+corresponding to the three execution needs of CryoSearch.
 
--   MMalign
+Usage:
 
-::: adjustwidth
-2em An algorithm for structurally aligning a pair of multiple-chain
-protein complexes. a quick algorithm for aligning multiple-chain protein
-complex structures using iterative dynamic programming.MMalign is used
-to generate the superposition state PDB file, which serves as the ground
-truth for CryoAlign, thereby validating the effectiveness of CryoAlign.
-:::
+    CryoAlign [data dir] [source.map] [source contour level] [target.map]
+    [target contour level] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius] [alg_type]
 
--   CryoAlign
+## CryoAlign Usage {#cryoalign-usage .unnumbered}
 
-::: adjustwidth
-2em Accurate global and local 3D alignment of cryo-EM density maps using
-local spatial structural features.CryoAlign is a feature-based cryo-EM
-map alignment tool, in which the employment of feature-based
-architecture enables the rapid establishment of point pair
-correspondences and robust estimation of alignment parameters.CryoAlign
-offers two alignment methods: global alignment and local alignment.
-:::
+Options:
 
-# Explanation of parameters and examples
+-   `–data_dir`: Map file path.
 
-## Parameter explanation of MMalign
+-   `–source_map`: Source emdb num.
 
-Usage: MMalign complex1.pdb complex2.pdb \[Options\]
+-   `–source_contour_level`: Author recommend contour level.
 
-Example usages: MMalign complex1.pdb complex2.pdb -a T -o complex1.sup
+-   `–target_map`: Target emdb num.
 
-==== Required options ====
+-   `–target_contour_level`: Author recommend contour level.
 
--   -a
+-   `–source_pdb` (optional): Source pdb name.
 
-TM-score normalized by the average length of two structures T or F,
-(default F)
+-   `–source_sup_pdb` (optional): Transformed source pdb name (ground
+    truth).
 
--   -o
+-   `–voxel_size`: Sampling interval (defaults 5.0).
 
-Output the superposition of complex1.pdb to sup.pdb
+-   `–feature_radius`: Radius for feature construction (defaults 7.0).
 
-## Parameter explanation of Cryoalign
+-   `–alg_type`: `Global_alignment` or `Mask_alignment`.
 
-Selects the alignment method:
+Example:
 
--   global alignment: direct
+For `Global_alignment`:
 
-    -   for global alignment:
+    CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type global
 
-    -   Usage:
-        `CryoAlign [data_dir] [source.map] [source_contour_level] [target.map] [target_contour_level] [source.pdb] [source_sup.pdb] [direct]`
+For `Mask_alignment`:
 
-        -   options:
+    CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type mask
 
-            -   `data_dir`: Map file path.
+## CryoAlign_extract_keypoints Usage {#cryoalign_extract_keypoints-usage .unnumbered}
 
-            -   `source.map`: Source emdb num.
+Usage:
 
-            -   `source_contour_level`: Author recommend contour level.
+    CryoAlign_extract_keypoints [data dir] [source.map] [source contour level] [target.map] [target contour level] [voxel_size]
 
-            -   `target.map`: Target emdb num.
+Options:
 
-            -   `target_contour_level`: Author recommend contour level.
+-   `–data_dir`: Map file path.
 
-            -   `source.pdb`: Source pdb name.
+-   `–map_name`: Source emdb num.
 
-            -   `source_sup.pdb`: Transformed source pdb name (ground
-                truth).
+-   `–contour_level`: Author recommend contour level.
 
-            -   `direct`: Global alignment indicator.
+-   `–voxel_size`: Sampling interval. (defaults 5.0)
 
--   local alignment: mask
+Example:
 
-    -   for local alignment:
+    CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3695_emd_3696/ --map_name EMD-3695.map --contour_level 0.008 --voxel_size 5.0
 
-    -   Usage:
-        `CryoAlign [data_dir] [source.map] [source_contour_level] [target.map] [target_contour_level] [source.pdb] [source_sup.pdb] [mask]`
+## CryoAlign_alignment Usage {#cryoalign_alignment-usage .unnumbered}
 
-        -   options:
+    CryoAlign_alignment [data dir] [source_xyz] [target_xyz] [source_sample]
+    [target_sample] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius]
+    [alg_type]
 
-            -   `data_dir`: Map file path.
+    Options:
+      --data_dir: Map file path.
+      --source_xyz: Source map keypoints file.
+      --target_xyz: Target map keypoints file
+      --source_sample: Source map sample file.
+      --target_sample: Target map sample file.
+      --source_pdb(optional): Source pdb name.
+      --source_sup_pdb(optional): Transformed source pdb name (ground truth).
+      --voxel_size: Sampling interval. (defaults 5.0)
+      --feature_radius: Radius for feature construction. (defaults 7.0)
+      --alg_type: Global_alignment or Mask_alignment.
 
-            -   `source.map`: Source emdb num.
+Examples
 
-            -   `source_contour_level`: Author recommend contour level.
+For Global Alignment
 
-            -   `target.map`: Target emdb num.
+    CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ \
+    --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz \
+    --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt \
+    --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 \
+    --feature_radius 7.0 --alg_type global
 
-            -   `target_contour_level`: Author recommend contour level.
+For Mask Alignment
 
-            -   `source.pdb`: Source pdb name.
-
-            -   `source_sup.pdb`: Transformed source pdb name (ground
-                truth).
-
-            -   `direct`: Local alignment indicator.
-
-## Explanation of output file
-
--   for global alignment: If the align method you are using is global
-    align, the results will be directly displayed in the terminal,
-    including the RMSD value and the RT transformation matrix.
-
-<!-- -->
-
--   for local alignment: If the align method you are using is local
-    align, the results will be saved in the directory specified as
-    \[data_dir\], in a file named extract_top_10.txt. This file will
-    contain the scores of the top 10 RT transformation matrices, as well
-    as the RMSD values.
-
-## Examples
-
-When using CryoAlign for cryo-electron microscopy density map alignment,
-the necessary parameters provided by the user include the source MRC
-file, the target MRC file, the contour_level of source MRC file and
-target MRC file, the source pdb file,the source_target_sup pdb file and
-the alignment method. (see subsection 3.1). The following are two
-examples, corresponding to the global alignment and the local alignment.
-
--   for global alignment:
-
-``` {.numberLines numbers="left" xleftmargin="2em" breaklines="true"}
-Step1
-./MMalign ../example_dataset/emd_2677_emd_3240/4upc.cif ../example_dataset/emd_2677_emd_3240/5fn5.pdb -a T -o  ../example_dataset/emd_2677_emd_3240/4upc_5fn5_sup.cif
-Step2
-./CryoAlign ../example_dataset/emd_2677_emd_3240/ EMD-2677.map 0.12 EMD-3240.map 0.04 4upc.cif 4upc_5fn5_sup.cif direct
-```
-
--   for local alignment:
-
-``` {.numberLines numbers="left" xleftmargin="2em" breaklines="true"}
-Step1
-./MMalign ../example_dataset/emd_2677_emd_3240/4upc.cif ../example_dataset/emd_2677_emd_3240/5fn5.pdb -a T -o  ../example_dataset/emd_2677_emd_3240/4upc_5fn5_sup.cif
-Step2
-./CryoAlign ../example_dataset/emd_2677_emd_3240/ EMD-2677.map 0.12 EMD-3240.map 0.04 4upc.cif 4upc_5fn5_sup.cif mask
-```
+    CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ \
+    --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz \
+    --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt \
+    --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 \
+    --feature_radius 7.0 --alg_type mask
