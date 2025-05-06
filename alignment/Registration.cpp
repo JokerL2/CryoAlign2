@@ -116,6 +116,9 @@ Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data
 	std::cout << "cal_SHOT sussessfully" << std::endl;
 	// 寻找对应点
     auto [corrs_A, corrs_B] = find_correspondences(A_key_feats, B_key_feats);
+	// 计算余弦距离
+    auto cosine_SHOT_distances = compute_cosine_distances(A_key_feats, B_key_feats, corrs_A, corrs_B);
+    double shot_score=calc_SHOT_score(cosine_SHOT_distances);
 	/*
 	// 打印 corrs_A
     std::cout << "corrs_A: ";
@@ -234,7 +237,7 @@ Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data
     out_file.close();
 	*/
 	//std::cout << "res_id:" <<res_id<<";"<< "direct_alignment score:" << score<<";"<< "rmsd:"<< rmsd <<";"<<std::endl;
-	double score = cal_score(A_pcd, B_pcd, 10.0, T_icp);
+	double score = cal_score(A_pcd, B_pcd,shot_score, 10.0, T_icp);
 	std::cout << "direct_alignment score:" << score<<";"<<std::endl;
 	if (!source_pdb.empty() && !sup_pdb.empty()){
 		Eigen::MatrixXd source_Pdb = getPointsFromPDB(source_pdb);
@@ -251,6 +254,56 @@ Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data
 	//std::filesystem::remove_all(data_dir);
 	return T_icp;
 }
+double Registration::calc_SHOT_score(const std::vector<double>& cosine_distances) {
+    if (cosine_distances.empty()) return 0.0;
+    
+    double total = 0.0;
+    for (const auto& d : cosine_distances) {
+        total += (1.0 - d);  // 将距离转换为相似度
+    }
+    return total / cosine_distances.size();  // 范围[0,1] 1=完美匹配
+}
+// 计算余弦距离的函数
+std::vector<double> Registration::compute_cosine_distances(
+    const Eigen::MatrixXd& feats_A,
+    const Eigen::MatrixXd& feats_B,
+    const std::vector<int>& corrs_A,
+    const std::vector<int>& corrs_B) 
+{
+    std::vector<double> distances;
+    distances.reserve(corrs_A.size());
+
+    for (size_t i = 0; i < corrs_A.size(); ++i) {
+        // 获取对应索引
+        const int idx_A = corrs_A[i];
+        const int idx_B = corrs_B[i];
+
+        // 提取特征向量
+        const Eigen::VectorXd vec_A = feats_A.row(idx_A);
+        const Eigen::VectorXd vec_B = feats_B.row(idx_B);
+
+        // 计算点积和模长
+        const double dot_product = vec_A.dot(vec_B);
+        const double norm_A = vec_A.norm();
+        const double norm_B = vec_B.norm();
+
+        // 处理零向量特殊情况
+        if (norm_A < 1e-8 || norm_B < 1e-8) {
+            distances.push_back(2.0); // 最大可能距离
+            continue;
+        }
+
+        // 计算余弦距离
+        const double cosine_sim = dot_product / (norm_A * norm_B);
+        const double cosine_distance = 1.0 - cosine_sim;
+        
+        distances.push_back(cosine_distance);
+    }
+
+    return distances;
+}
+
+
 void Registration::extract_top_K(const std::string& record_dir, const std::string& record_T_dir, int K, const std::string& save_dir, const std::string& source_pdb_dir, const std::string& source_sup_dir) {
     // 读取分数
     std::vector<double> score_list;
@@ -571,6 +624,288 @@ void Registration::Registration_mask_list(const std::string& data_dir,
 	//std::filesystem::remove_all(temp_dir);
 	
 }
+/*
+void Registration::Registration_mask_list(const std::string& data_dir,
+                                              const std::string& source_dir,
+                                              const std::string& target_dir,
+                                              const std::string& source_sample_dir,
+                                              const std::string& target_sample_dir,
+                                              float VOXEL_SIZE,
+                                              float feature_radius,
+                                              const std::string& outnum,
+                                              bool store_partial) {
+    // MPI初始化
+    MPI_Init(nullptr, nullptr);
+    int world_rank, world_size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
+    // 数据广播结构体
+    struct BroadcastParams {
+        Eigen::Vector3d center, terminal;
+        double radius, step, max_correspondence_dist;
+        int total_i, total_j, total_k;
+        bool valid_processing;
+        Eigen::MatrixXd A_key_feats, B_key_feats;
+    } bcast_params;
+
+    // 主进程加载数据
+    if (world_rank == 0) {
+        // 加载样本数据
+        std::vector<std::array<double, 3>> sample_A_points, sample_A_normals;
+        std::vector<std::array<double, 3>> sample_B_points, sample_B_normals;
+        std::tie(sample_A_points, sample_A_normals, std::ignore) = load_sample(source_sample_dir);
+        std::tie(sample_B_points, sample_B_normals, std::ignore) = load_sample(target_sample_dir);
+
+        // 创建并填充点云A
+        open3d::geometry::PointCloud A_pcd;
+        for (const auto& point : sample_A_points) {
+            A_pcd.points_.push_back(Eigen::Vector3d(point[0], point[1], point[2]));
+        }
+        for (const auto& normal : sample_A_normals) {
+            A_pcd.normals_.push_back(Eigen::Vector3d(normal[0], normal[1], normal[2]));
+        }
+
+        // 创建并填充点云B
+        open3d::geometry::PointCloud B_pcd;
+        for (const auto& point : sample_B_points) {
+            B_pcd.points_.push_back(Eigen::Vector3d(point[0], point[1], point[2]));
+        }
+        for (const auto& normal : sample_B_normals) {
+            B_pcd.normals_.push_back(Eigen::Vector3d(normal[0], normal[1], normal[2]));
+        }
+
+        // 加载关键点
+        open3d::geometry::PointCloud A_key_pcd = load_xyz(source_dir);
+        open3d::geometry::PointCloud B_key_pcd = load_xyz(target_dir);
+
+        // 创建临时目录
+        std::string temp_dir = data_dir + "/temp";
+        if (!std::filesystem::exists(temp_dir)) {
+            std::filesystem::create_directory(temp_dir);
+        }
+
+        // 计算SHOT特征
+        const auto& A_keypoint = A_key_pcd.points_;
+        const auto& B_keypoint = B_key_pcd.points_;
+        bcast_params.A_key_feats = cal_SHOT(sample_A_points, sample_A_normals, temp_dir, A_keypoint, VOXEL_SIZE * feature_radius);
+        bcast_params.B_key_feats = cal_SHOT(sample_B_points, sample_B_normals, temp_dir, B_keypoint, VOXEL_SIZE * feature_radius);
+
+        // 计算边界
+        Eigen::Vector3d A_min_bound = A_pcd.GetMinBound();
+        Eigen::Vector3d A_max_bound = A_pcd.GetMaxBound();
+        Eigen::Vector3d B_min_bound = B_pcd.GetMinBound();
+        Eigen::Vector3d B_max_bound = B_pcd.GetMaxBound();
+
+        // 有效性检查
+        double A_mean = (A_max_bound - A_min_bound).mean();
+        double B_mean = (B_max_bound - B_min_bound).mean();
+        if (std::abs(A_mean - B_mean) > 1e-6) {
+            bcast_params.valid_processing = true;
+            Eigen::Vector3d A_dist = A_max_bound - A_min_bound;
+            bcast_params.radius = *std::max_element(A_dist.data(), A_dist.data()+3) * 1.1 / 2;
+            bcast_params.center = B_min_bound + Eigen::Vector3d::Constant(bcast_params.radius/10);
+            bcast_params.terminal = B_max_bound;
+            bcast_params.step = static_cast<int>(std::floor(bcast_params.radius / 2));
+            bcast_params.max_correspondence_dist = 10.0;
+
+            // 计算迭代次数
+            bcast_params.total_i = static_cast<int>(bcast_params.terminal[0]/bcast_params.step) + 1;
+            bcast_params.total_j = static_cast<int>(bcast_params.terminal[1]/bcast_params.step) + 1;
+            bcast_params.total_k = static_cast<int>(bcast_params.terminal[2]/bcast_params.step) + 1;
+        } else {
+            bcast_params.valid_processing = false;
+        }
+    }
+
+    // 广播基本参数
+    MPI_Bcast(&bcast_params.valid_processing, 1, MPI_C_BOOL, 0, MPI_COMM_WORLD);
+    if (!bcast_params.valid_processing) {
+        if (world_rank == 0) {
+            std::cout << "please exchange the source map and target one" << std::endl;
+        }
+        MPI_Finalize();
+        return;
+    }
+
+    // 广播几何参数
+    if (world_rank != 0) {
+        bcast_params.A_key_feats.resize(0,0);
+        bcast_params.B_key_feats.resize(0,0);
+    }
+    
+    // 自定义广播函数
+    auto broadcast_matrix = [](Eigen::MatrixXd& mat, int root) {
+        int rows, cols;
+        if (MPI_Comm_rank(MPI_COMM_WORLD, &root) == root) {
+            rows = mat.rows();
+            cols = mat.cols();
+        }
+        MPI_Bcast(&rows, 1, MPI_INT, root, MPI_COMM_WORLD);
+        MPI_Bcast(&cols, 1, MPI_INT, root, MPI_COMM_WORLD);
+        if (world_rank != root) mat.resize(rows, cols);
+        MPI_Bcast(mat.data(), rows*cols, MPI_DOUBLE, root, MPI_COMM_WORLD);
+    };
+
+    // 广播特征矩阵
+    if (world_rank == 0) {
+        MPI_Bcast(&bcast_params.center, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.terminal, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.radius, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.step, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.max_correspondence_dist, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.total_i, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.total_j, 1, MPI_INT, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&bcast_params.total_k, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    }
+    broadcast_matrix(bcast_params.A_key_feats, 0);
+    broadcast_matrix(bcast_params.B_key_feats, 0);
+
+    // 工作划分（按i维度）
+    int chunk_size = bcast_params.total_i / world_size;
+    int remainder = bcast_params.total_i % world_size;
+    int start_i = world_rank * chunk_size + (world_rank < remainder ? world_rank : remainder);
+    int end_i = start_i + chunk_size + (world_rank < remainder ? 1 : 0);
+    start_i *= bcast_params.step;
+    end_i = std::min(end_i * bcast_params.step, static_cast<int>(bcast_params.terminal[0]));
+
+    // 本地存储
+    std::vector<Eigen::Matrix4d> local_T;
+    std::vector<std::tuple<int, int, int, double>> local_records;
+
+    // OpenMP并行区域
+    #pragma omp parallel
+    {
+        // 线程本地变量
+        std::vector<Eigen::Matrix4d> thread_T;
+        std::vector<std::tuple<int, int, int, double>> thread_records;
+        auto local_mask = this->mask;  // 线程独立的mask副本
+
+        #pragma omp for collapse(3) schedule(dynamic)
+        for (int i = start_i; i <= end_i; i += bcast_params.step) {
+            for (int j = 0; j <= static_cast<int>(bcast_params.terminal[1]); j += bcast_params.step) {
+                for (int k = 0; k <= static_cast<int>(bcast_params.terminal[2]); k += bcast_params.step) {
+                    // 设置mask参数
+                    Eigen::Vector3d temp_center = bcast_params.center + Eigen::Vector3d(i, j, k);
+                    local_mask["name"] = "sphere";
+                    local_mask["center"] = temp_center;
+                    local_mask["radius"] = bcast_params.radius;
+
+                    // 执行配准
+                    auto [final_T, score] = Registration_mask(
+                        data_dir + "/temp_" + std::to_string(world_rank),
+                        A_pcd, B_pcd, 
+                        A_key_pcd, B_key_pcd,
+                        bcast_params.A_key_feats, bcast_params.B_key_feats,
+                        local_mask,
+                        bcast_params.max_correspondence_dist,
+                        VOXEL_SIZE,
+                        store_partial
+                    );
+
+                    // 记录结果
+                    thread_records.emplace_back(i, j, k, score);
+                    thread_T.push_back(final_T ? *final_T : Eigen::Matrix4d::Identity());
+                }
+            }
+        }
+
+        // 合并线程结果
+        #pragma omp critical
+        {
+            local_records.insert(local_records.end(), thread_records.begin(), thread_records.end());
+            local_T.insert(local_T.end(), thread_T.begin(), thread_T.end());
+        }
+    }
+
+    // 结果收集
+    if (world_rank == 0) {
+        // 主进程写入文件
+        std::string record_dir = data_dir + "/"+outnum+"_record_cpp.txt";
+        std::ofstream f(record_dir);
+        f << "t_x\tt_y\tt_z\tscore\n";
+        for (const auto& [i,j,k,score] : local_records) {
+            f << i << "\t" << j << "\t" << k << "\t" << score << "\n";
+        }
+
+        // 接收其他进程结果
+        for (int src = 1; src < world_size; ++src) {
+            // 接收元数据
+            int recv_count;
+            MPI_Recv(&recv_count, 1, MPI_INT, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            // 接收坐标和分数
+            std::vector<int> coords(recv_count * 3);
+            std::vector<double> scores(recv_count);
+            MPI_Recv(coords.data(), recv_count*3, MPI_INT, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(scores.data(), recv_count, MPI_DOUBLE, src, 2, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            // 写入文件
+            for (int idx = 0; idx < recv_count; ++idx) {
+                f << coords[idx*3] << "\t" << coords[idx*3+1] << "\t" 
+                  << coords[idx*3+2] << "\t" << scores[idx] << "\n";
+            }
+
+            // 接收变换矩阵
+            int matrix_count;
+            MPI_Recv(&matrix_count, 1, MPI_INT, src, 3, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            std::vector<double> matrix_data(matrix_count * 16);
+            MPI_Recv(matrix_data.data(), matrix_count*16, MPI_DOUBLE, src, 4, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            
+            // 转换为Matrix4d
+            for (int i = 0; i < matrix_count; ++i) {
+                Eigen::Matrix4d mat;
+                std::memcpy(mat.data(), &matrix_data[i*16], 16*sizeof(double));
+                local_T.push_back(mat);
+            }
+        }
+        f.close();
+
+        // 保存矩阵文件
+        std::vector<double> all_T_data;
+        for (const auto& mat : local_T) {
+            Eigen::Matrix4d transposed = mat.transpose();
+            all_T_data.insert(all_T_data.end(), transposed.data(), transposed.data() + 16);
+        }
+        cnpy::npy_save(data_dir + "/"+outnum+"_record_T_cpp.npy",
+                      all_T_data.data(),
+                      {all_T_data.size()/16, 4, 4},
+                      "w");
+    } else {
+        // 从进程发送数据
+        int send_count = local_records.size();
+        MPI_Send(&send_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+        // 打包坐标和分数
+        std::vector<int> coords(send_count * 3);
+        std::vector<double> scores(send_count);
+        for (size_t i = 0; i < local_records.size(); ++i) {
+            auto [x,y,z,s] = local_records[i];
+            coords[i*3] = x;
+            coords[i*3+1] = y;
+            coords[i*3+2] = z;
+            scores[i] = s;
+        }
+        MPI_Send(coords.data(), send_count*3, MPI_INT, 0, 1, MPI_COMM_WORLD);
+        MPI_Send(scores.data(), send_count, MPI_DOUBLE, 0, 2, MPI_COMM_WORLD);
+
+        // 发送变换矩阵
+        int matrix_count = local_T.size();
+        MPI_Send(&matrix_count, 1, MPI_INT, 0, 3, MPI_COMM_WORLD);
+        std::vector<double> matrix_data(matrix_count * 16);
+        for (size_t i = 0; i < local_T.size(); ++i) {
+            Eigen::Matrix4d transposed = local_T[i].transpose();
+            std::memcpy(&matrix_data[i*16], transposed.data(), 16*sizeof(double));
+        }
+        MPI_Send(matrix_data.data(), matrix_count*16, MPI_DOUBLE, 0, 4, MPI_COMM_WORLD);
+    }
+
+    MPI_Finalize();
+    if (world_rank == 0) {
+        std::cout << "masklist success!" << std::endl;
+    }
+}
+*/
 std::tuple<std::optional<Eigen::Matrix4d>, double> Registration::Registration_mask(
 							const std::string& data_dir,
 							const open3d::geometry::PointCloud& A_pcd,
@@ -625,6 +960,8 @@ std::tuple<std::optional<Eigen::Matrix4d>, double> Registration::Registration_ma
 	}
 	const std::vector<Eigen::Vector3d>& B_mask_key_points = mask_B_key_pcd.points_;
 	auto [corrs_A, corrs_B] = find_correspondences(A_key_feats, B_mask_key_feats);
+	auto cosine_SHOT_distances = compute_cosine_distances(A_key_feats, B_key_feats, corrs_A, corrs_B);
+    double shot_score=calc_SHOT_score(cosine_SHOT_distances);
 	// 根据索引提取对应点的坐标
     Eigen::MatrixXd A_corr(3, corrs_A.size());
     Eigen::MatrixXd B_corr(3, corrs_B.size());
@@ -659,75 +996,83 @@ std::tuple<std::optional<Eigen::Matrix4d>, double> Registration::Registration_ma
     Eigen::Matrix4d final_T = icp_result.transformation_;
 
     // 计算分数
-    double score = cal_score(A_pcd, B_pcd, max_correspondence_dist, final_T);
+    double score = cal_score(A_pcd, B_pcd,shot_score, max_correspondence_dist, final_T);
 
     return std::make_tuple(final_T, score); 
 	
 	
 }
-/*
-double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
-                               const open3d::geometry::PointCloud& B_pcd,
-                               double max_correspondence_dist,
-                               const Eigen::Matrix4d& final_T) {
 
+double Registration::cal_score(
+    const open3d::geometry::PointCloud& A_pcd,
+    const open3d::geometry::PointCloud& B_pcd,
+	double shot_score,
+    double max_correspondence_dist,
+    const Eigen::Matrix4d& final_T) {
+
+    // 使用Open3D执行评估
     auto eval_metric = open3d::pipelines::registration::EvaluateRegistration(
         A_pcd, B_pcd, max_correspondence_dist, final_T);
 
+    // 检查对应点集的大小
     if (eval_metric.correspondence_set_.size() < A_pcd.points_.size() * 0.1) {
         std::cout << "correspondence_set is small" << std::endl;
         return 0.0;
     }
 
+    // 变换A_pcd
     auto A_transformed = A_pcd;
     A_transformed.Transform(final_T);
 
+    // 初始化改进评分指标
     double cosin_dist_sum = 0.0;
+    double dist_sum = 0.0;
+    double density_score = 0.0;
+    double shot_similarity_score = 0.0;
     int valid_cosin_count = 0;
-    double euclidean_dist_sum = 0.0;
-    double normal_angle_diff_sum = 0.0;
+
+    // 计算密度
+    auto A_kdtree = open3d::geometry::KDTreeFlann(A_transformed);
+    auto B_kdtree = open3d::geometry::KDTreeFlann(B_pcd);
 
     for (const auto& corr : eval_metric.correspondence_set_) {
+        // 计算法线之间的余弦距离
         double cosin_dist = A_transformed.normals_[corr[0]].dot(B_pcd.normals_[corr[1]]);
         if (cosin_dist >= 0.6) {
             cosin_dist_sum += cosin_dist;
             valid_cosin_count++;
         }
 
-        double euclidean_dist = (A_transformed.points_[corr[0]] - B_pcd.points_[corr[1]]).norm();
-        euclidean_dist_sum += euclidean_dist;
+        // 计算对应点之间的欧氏距离
+        double dist = (A_transformed.points_[corr[0]] - B_pcd.points_[corr[1]]).norm();
+        dist_sum += exp(-dist);
 
-        cosin_dist = std::max(-1.0, std::min(1.0, cosin_dist));
-        double angle_diff = acos(cosin_dist);
-        normal_angle_diff_sum += angle_diff;
+        // 计算密度一致性
+        std::vector<int> A_indices, B_indices;
+        std::vector<double> A_distances, B_distances;
+        A_kdtree.SearchRadius(A_transformed.points_[corr[0]], max_correspondence_dist, A_indices, A_distances);
+        B_kdtree.SearchRadius(B_pcd.points_[corr[1]], max_correspondence_dist, B_indices, B_distances);
+
+        double density_ratio = static_cast<double>(A_indices.size()) / static_cast<double>(B_indices.size());
+        density_score += exp(-fabs(density_ratio - 1.0));
+
     }
-
-    double valid_cosin_ratio = static_cast<double>(valid_cosin_count) / eval_metric.correspondence_set_.size();
-    double avg_euclidean_dist = euclidean_dist_sum / eval_metric.correspondence_set_.size();
-    double avg_normal_angle_diff = normal_angle_diff_sum / eval_metric.correspondence_set_.size();
-	double overlap_ratio = static_cast<double>(eval_metric.correspondence_set_.size()) /
-                           std::min(A_pcd.points_.size(), B_pcd.points_.size());
-	// 输出中间计算值
-    std::cout << "Valid Cosine Ratio: " << valid_cosin_ratio << std::endl;
-    std::cout << "Average Euclidean Distance: " << avg_euclidean_dist << std::endl;
-    std::cout << "Average Normal Angle Difference: " << avg_normal_angle_diff << std::endl;
-    std::cout << "Overlap Ratio: " << overlap_ratio << std::endl;
-    // 假设我们赋予每个指标不同的权重
-    const double weight_cosin = 0.4;
-    const double weight_euclidean = 0.2;
-    const double weight_angle = 0.2;
-    const double weight_overlap = 0.2;
-
-    // 计算综合得分
-    double score = weight_cosin * valid_cosin_ratio +
-                   weight_euclidean * (1.0 / (1.0 + avg_euclidean_dist)) + // 使得距离越小分数越高
-                   weight_angle * (1.0 / (1.0 + avg_normal_angle_diff)) + // 使得角度差异越小分数越高
-                   weight_overlap * overlap_ratio;
+	
+    // 计算加权综合评分
+    double normal_similarity_score = static_cast<double>(valid_cosin_count) / eval_metric.correspondence_set_.size();
+    double distance_score = dist_sum / eval_metric.correspondence_set_.size();
+    density_score /= eval_metric.correspondence_set_.size();
+    double score = 0.3 * normal_similarity_score + 
+                   0.1 * distance_score + 
+                   0.3 * density_score + 
+                   0.3 * shot_score;
 
     return score;
 }
-*/
-double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
+
+
+
+/*double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
                  const open3d::geometry::PointCloud& B_pcd,
                  double max_correspondence_dist,
                  const Eigen::Matrix4d& final_T) {
@@ -761,7 +1106,7 @@ double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
 
     return score;
 }
-
+*/
 
 std::pair<open3d::geometry::PointCloud, std::vector<size_t>> Registration::MaskSpherePoints(const open3d::geometry::PointCloud& pcd,
                  const Eigen::Vector3d& center,

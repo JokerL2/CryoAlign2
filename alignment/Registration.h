@@ -97,8 +97,15 @@ public:
                  double radius);
 	double cal_score(const open3d::geometry::PointCloud& A_pcd,
                  const open3d::geometry::PointCloud& B_pcd,
+				 double shot_score,
                  double max_correspondence_dist,
                  const Eigen::Matrix4d& final_T);
+	std::vector<double> compute_cosine_distances(
+    const Eigen::MatrixXd& feats_A,
+    const Eigen::MatrixXd& feats_B,
+    const std::vector<int>& corrs_A,
+    const std::vector<int>& corrs_B);
+	double calc_SHOT_score(const std::vector<double>& cosine_distances);
 	void extract_top_K(const std::string& record_dir, const std::string& record_T_dir, int K, const std::string& save_dir, const std::string& source_pdb_dir = "", const std::string& source_sup_dir = "");
 	double cal_pdb_RMSD(const std::string& source_pdb_dir,const std::string& source_sup_dir,Eigen::Matrix4d T);
 private:
