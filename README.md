@@ -201,11 +201,11 @@ For Mask Alignment
     --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 \
     --feature_radius 7.0 --alg_type mask
 # Retrieval steps
-##Step1.Build a retrieval library
+## Step1.Build a retrieval library
 Use CryoAlign_extract_keypoints to build a retrieval database. For the script, see script/CreateDB.py.
 python script/CreateDB.py
 You will get a key point cloud and sample point cloud library, similar to the database example
-##Step2.Perform a retrieval
+## Step2.Perform a retrieval
 Use CryoAlign_alignment to perform the search. See script/CryoSearch.py ​​for the script.
 python script/CryoSearch.py
 You will get a density map similarity score file res.txt
@@ -214,5 +214,5 @@ Class_1-8587-Class_1-8551	0.7663
 Class_1-8889-Class_1-8587	0.456922
 Class_1-8889-Class_1-8551	0.689744
 ...
-##Step3.Density map overlay
+## Step3.Density map overlay
 Use script/Transform_map.py to overlay the density map, and save the RT (rotation translation) matrix for each alignment.
