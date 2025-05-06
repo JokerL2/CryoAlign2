@@ -1,6 +1,6 @@
 FROM nvidia/cuda:12.2.2-cudnn8-devel-ubuntu20.04 AS BUILD 
 
-COPY ./CryoSearch /CryoSearch
+COPY ./CryoAlign2 /CryoAlign2
 
 RUN   apt-get update -y \
     && DEBIAN_FRONTEND=noninteractive apt-get -y install git cmake libeigen3-dev libboost-all-dev libfftw3-dev libgl1-mesa-glx libpcl-dev libarmadillo-dev libmlpack-dev libflann-dev \
@@ -26,6 +26,6 @@ RUN   apt-get update -y \
     && mkdir build \
     && cd build && cmake .. \
     && make install \
-    && cd /CryoSearch/sample_cluster/Vectorize \
+    && cd /CryoAlign2/sample_cluster/Vectorize \
     && make && cp Sample ../ \
-    && rm -rf /CryoSearch/sample_cluster/Vectorize \
+    && rm -rf /CryoAlign2/sample_cluster/Vectorize \
