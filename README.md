@@ -1,6 +1,5 @@
 ---
-title: An efficient global and local mixed Cryo-EM density map retrieval
-  tool based on parallel-accelerated CryoAlign
+CryoAlign2: efficient global and local Cryo-EM map retrieval based on parallel-accelerated local spatial structural features
 ---
 
 # Introduction
@@ -8,9 +7,6 @@ title: An efficient global and local mixed Cryo-EM density map retrieval
 We developed an alignment-based retrieval tool to perform both global and local retrieval. Our approach adopts parallel-accelerated CryoAlign for high-precision 3D alignment and transforms density maps into point clouds for efficient retrieval and storage. Additionally, a multi-dimension scoring function is introduced to accurately assess structural similarities between superimposed density maps. 
 
 # Installation
-
-The sections below explain how to download and install CryoSearch on
-your computer.
 
 ## Prerequisites
 
@@ -67,7 +63,7 @@ that provides code-development with version control and issue tracking
 through the use of git. To clone the repository, run the following
 command
 
-        git clone https://github.com/JokerL2/CryoSearch_cpp.git
+        git clone https://github.com/JokerL2/CryoAlign2.git
 
 For the convenience of environment configuration, we have provided
 Docker images that include the necessary environments and external
