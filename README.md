@@ -106,7 +106,7 @@ CryoAlign_extract_keypoints:
 CryoAlign_alignment:
 
 ```
-## CryoAlign Usage
+## CryoAlign
 Usage:
 
     CryoAlign [data dir] [source.map] [source contour level] [target.map]
