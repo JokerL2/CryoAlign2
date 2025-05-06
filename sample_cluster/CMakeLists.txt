@@ -1,62 +1,65 @@
-cmake_minimum_required(VERSION 3.0)
-project(sample_cluster)
+cmake_minimum_required(VERSION 3.10)
+project(alignment)
 
 # 设置 C++17 标准
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug)
 
-# 查找必要的包
-find_package(Eigen3 REQUIRED)
+# 查找 OpenMP
 find_package(OpenMP REQUIRED)
-find_package(Boost REQUIRED COMPONENTS program_options unit_test_framework serialization)
-find_package(CUDA REQUIRED)
-find_package(Armadillo REQUIRED)
 
-set(CUDA_TOOLKIT_ROOT_DIR "/usr/local/cuda-12.2")
+# 查找 Boost
+find_package(Boost REQUIRED COMPONENTS date_time program_options unit_test_framework serialization)
 
-# 指定CUDA编译器的路径
-set(CMAKE_CUDA_COMPILER "/usr/local/cuda-12.2/bin/nvcc")
+# 查找 Open3D
+find_package(Open3D REQUIRED)
 
-list(APPEND CMAKE_PREFIX_PATH "/home/liu/libtorch2.2.1/share/cmake/Torch")
-find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH})
+# 查找 Eigen
+find_package(Eigen3 REQUIRED)
 
-# 手动设置 mlpack 的包含目录和库路径
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(MLPACK REQUIRED mlpack)
+# 查找 teaser++
+set(TEASERPP_INCLUDE_DIRS /usr/local/include/teaser)
 
+
+# 设置 CNPY 的包含目录和库文件路径
+set(CNPY_INCLUDE_DIRS /usr/local/include)
+set(CNPY_LIBRARIES /usr/local/lib/libcnpy.so)
+
+
+# 设置 FLANN 的包含目录和库文件路径
+set(FLANN_INCLUDE_DIRS /usr/include/flann)
+set(FLANN_LIBRARIES /usr/lib/x86_64-linux-gnu/libflann.so)
+
+find_package(PCL REQUIRED)
 # 包含头文件目录
 include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ${Boost_INCLUDE_DIRS}
-    ${EIGEN3_INCLUDE_DIR}
-    ${ARMADILLO_INCLUDE_DIRS}
-    ${TORCH_INCLUDE_DIRS}
-    ${MLPACK_INCLUDE_DIRS}
+    ${Open3D_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
+    ${TEASERPP_INCLUDE_DIRS}
+    ${CNPY_INCLUDE_DIRS}
+    ${FLANN_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
 )
 
 # 源文件
-set(SOURCES  VoxEM.cpp)
+set(SRCS Registration.cpp)
 
 # 添加库
-add_library(sample_cluster_lib ${SOURCES})
+add_library(alignment_lib ${SRCS})
 
-# 链接到必要的库
-target_link_libraries(sample_cluster_lib 
-    ${TORCH_LIBRARIES}
+# 链接库
+target_link_libraries(alignment_lib 
     OpenMP::OpenMP_CXX
     ${Boost_LIBRARIES}
+    ${Open3D_LIBRARIES}
     Eigen3::Eigen
-    ${ARMADILLO_LIBRARIES}
-    ${MLPACK_LIBRARIES}
+    teaser_io 
+    teaser_registration
+    ${CNPY_LIBRARIES}
+    ${FLANN_LIBRARIES}
+    ${PCL_LIBRARIES}
     stdc++fs
 )
-
-# 添加编译器优化和特定标志
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(sample_cluster_lib PRIVATE -O3 -march=native)
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    target_compile_options(sample_cluster_lib PRIVATE /O2 /arch:AVX)
-endif()
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(sample_cluster_lib PRIVATE -g)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -g")
-endif()
