@@ -58,7 +58,7 @@ recommend you to generate image using the dockerfile.
 
 ## Installtion of CryoAlign2
 
-We store the public release versions of CryoSearch on GitHub, a site
+We store the public release versions of CryoAlign2 on GitHub, a site
 that provides code-development with version control and issue tracking
 through the use of git. To clone the repository, run the following
 command
@@ -86,10 +86,10 @@ wget https://download.pytorch.org/libtorch/nightly/cu121/libtorch-cxx11-abi-shar
 unzip libtorch-cxx11-abi-shared-with-deps-2.2.0.dev20231213+cu121.zip
 ```
 
--   Install CryoSearch
+-   Install CryoAlign2
 
 ``` {.numberLines numbers="left" xleftmargin="2em"}
-cd /CryoSearch && mkdir build && cd build
+cd /CryoAlign2 && mkdir build && cd build
 cmake ..
 make
 ```
@@ -97,7 +97,7 @@ make
 # Executable file description
 
 After installation, three executable files will be generated,
-corresponding to the three execution needs of CryoSearch.
+corresponding to the three execution needs of CryoAlign2.
 
 Usage:
 
