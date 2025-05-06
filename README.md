@@ -99,11 +99,11 @@ make
 After installation, three executable files will be generated.
 
 ``` {.numberLines numbers="left" xleftmargin="2em"}
-CryoAlign:
+CryoAlign: Full-process density map similarity comparison, including density map sampling, keypoint extraction, and alignment scoring.
 
-CryoAlign_extract_keypoints:
+CryoAlign_extract_keypoints: Performs density map sampling and keypoint extraction only.
 
-CryoAlign_alignment:
+CryoAlign_alignment: Direct alignment scoring using sampled points and keypoints from density maps.
 
 ```
 ## CryoAlign
