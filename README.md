@@ -10,7 +10,7 @@ We developed an alignment-based retrieval tool to perform both global and local 
 
 ## Prerequisites
 
-Note that CryoSearch depends on and uses several external programs and
+Note that CryoAlign2 depends on and uses several external programs and
 libraries.If you have a Docker environment with GPU, we strongly
 recommend you to generate image using the dockerfile.
 
