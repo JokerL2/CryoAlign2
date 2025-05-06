@@ -212,10 +212,10 @@ You will get a key point cloud and sample point cloud library, similar to the da
 Use CryoAlign_alignment to perform the search. See script/CryoSearch.py ​​for the script.
 python script/CryoSearch.py
 You will get a density map similarity score file res.txt
-Class_1-8553-Class_1-8551	0.810762
-Class_1-8587-Class_1-8551	0.7663
-Class_1-8889-Class_1-8587	0.456922
-Class_1-8889-Class_1-8551	0.689744
+8553-8551	0.810762
+8587-8551	0.7663
+8889-8587	0.456922
+8889-8551	0.689744
 ...
 ```
 ## Step3.Density map overlay
