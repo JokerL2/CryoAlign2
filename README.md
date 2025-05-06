@@ -221,4 +221,5 @@ You will get a density map similarity score file res.txt
 ## Step3.Density map overlay
 ``` {.numberLines numbers="left" xleftmargin="2em"}
 Use script/Transform_map.py to overlay the density map, and save the RT (rotation translation) matrix for each alignment.
+python script/Transform_map.py
 ```
