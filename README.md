@@ -96,15 +96,21 @@ make
 
 # Executable file description
 
-After installation, three executable files will be generated,
-corresponding to the three execution needs of CryoAlign2.
+After installation, three executable files will be generated.
 
+``` {.numberLines numbers="left" xleftmargin="2em"}
+CryoAlign:
+
+CryoAlign_extract_keypoints:
+
+CryoAlign_alignment:
+
+```
+## CryoAlign Usage
 Usage:
 
     CryoAlign [data dir] [source.map] [source contour level] [target.map]
     [target contour level] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius] [alg_type]
-
-## CryoAlign Usage {#cryoalign-usage .unnumbered}
 
 Options:
 
@@ -139,7 +145,7 @@ For `Mask_alignment`:
 
     CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type mask
 
-## CryoAlign_extract_keypoints Usage {#cryoalign_extract_keypoints-usage .unnumbered}
+## CryoAlign_extract_keypoints
 
 Usage:
 
@@ -159,7 +165,7 @@ Example:
 
     CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3695_emd_3696/ --map_name EMD-3695.map --contour_level 0.008 --voxel_size 5.0
 
-## CryoAlign_alignment Usage {#cryoalign_alignment-usage .unnumbered}
+## CryoAlign_alignment
 
     CryoAlign_alignment [data dir] [source_xyz] [target_xyz] [source_sample]
     [target_sample] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius]
