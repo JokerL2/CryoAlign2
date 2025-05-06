@@ -56,7 +56,7 @@ recommend you to generate image using the dockerfile.
 
 -   FFTW
 
-## Installtion of CryoSearch
+## Installtion of CryoAlign2
 
 We store the public release versions of CryoSearch on GitHub, a site
 that provides code-development with version control and issue tracking
