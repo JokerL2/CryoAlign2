@@ -5,6 +5,7 @@ project(test_project)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Debug)
+find_package(MPI REQUIRED)
 # 包含子目录
 add_subdirectory(alignment)
 add_subdirectory(sample_cluster)
@@ -25,6 +26,7 @@ add_executable(CryoAlign ${TEST1_SOURCES})
 target_link_libraries(CryoAlign
     alignment_lib 
     sample_cluster_lib
+    MPI::MPI_CXX
 )
 
 
@@ -37,6 +39,7 @@ add_executable(CryoAlign_extract_keypoints ${TEST2_SOURCES})
 # 链接到必要的库
 target_link_libraries(CryoAlign_extract_keypoints
     sample_cluster_lib
+    MPI::MPI_CXX
 )
 
 # 源文件
@@ -48,6 +51,7 @@ add_executable(CryoAlign_alignment ${TEST3_SOURCES})
 # 链接到必要的库
 target_link_libraries(CryoAlign_alignment
     alignment_lib 
+    MPI::MPI_CXX
 )
 
 # 添加编译器优化和特定标志

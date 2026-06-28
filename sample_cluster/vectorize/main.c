@@ -32,11 +32,11 @@ int main(int argc, char **argv)
  }else{
   omp_set_num_threads(omp_get_num_procs());
  }
- 
+
  if(readmrc(&mrc1,cmd.file))
   return(0);
 
- //Setup 2^x size 
+ //Setup 2^x size
 
  MRC mrcN1;
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
  //Convert to vector
  if(fastVEC(&mrc1,&mrcN1))
   return(0);
- 
+
  if(cmd.Mode==1){
    ShowVec(&mrcN1);
    }

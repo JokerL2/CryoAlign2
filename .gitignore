@@ -1,0 +1,16 @@
+/build*/
+/bin/
+
+sample_cluster/Sample
+
+*.o
+*.a
+*.so
+*.swp
+*~
+
+temp/
+*.pcd
+*_RT.npy
+*_record*.csv
+*_record*.txt

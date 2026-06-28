@@ -8,12 +8,19 @@ set(CMAKE_BUILD_TYPE Debug)
 
 # 查找 OpenMP
 find_package(OpenMP REQUIRED)
+find_package(MPI REQUIRED)
 
 # 查找 Boost
 find_package(Boost REQUIRED COMPONENTS date_time program_options unit_test_framework serialization)
 
 # 查找 Open3D
 find_package(Open3D REQUIRED)
+if(TARGET Open3D::Open3D)
+    get_target_property(_open3d_is_imported Open3D::Open3D IMPORTED)
+    if(_open3d_is_imported)
+        set_target_properties(Open3D::Open3D PROPERTIES IMPORTED_GLOBAL TRUE)
+    endif()
+endif()
 
 # 查找 Eigen
 find_package(Eigen3 REQUIRED)
@@ -53,6 +60,7 @@ add_library(alignment_lib ${SRCS})
 # 链接库
 target_link_libraries(alignment_lib 
     OpenMP::OpenMP_CXX
+    MPI::MPI_CXX
     ${Boost_LIBRARIES}
     ${Open3D_LIBRARIES}
     Eigen3::Eigen

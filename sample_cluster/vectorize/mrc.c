@@ -35,13 +35,13 @@ int chkcmdline( int argc, char **argv,CMD *cmd){
 			strcpy(cmd->file,*(++p));
                 	--argc; break;
 		 case 'c':
-			cmd->Nthr=atoi(*(++p)); 
+			cmd->Nthr=atoi(*(++p));
 			--argc; break;
 		 case 't':
-			cmd->th1=atof(*(++p)); 
+			cmd->th1=atof(*(++p));
 			--argc; break;
 		 case 'g':
-			cmd->dreso=atof(*(++p)); 
+			cmd->dreso=atof(*(++p));
 			--argc; break;
 		 case 's':
                         cmd->ssize=atof(*(++p));
@@ -49,10 +49,10 @@ int chkcmdline( int argc, char **argv,CMD *cmd){
 		 case 'V':
                         cmd->Mode=1;
                         break;
-		 default: 
-		  	fprintf(stderr,"No such a option: %s\n",*p+1); 
-			errmsg(); 
-			return(FALSE); 
+		 default:
+		  	fprintf(stderr,"No such a option: %s\n",*p+1);
+			errmsg();
+			return(FALSE);
 		 break;
 	  }
 	 }
@@ -110,11 +110,11 @@ bool readmrc(MRC *mrc, char *filename){//读取文件,调用permuted_index
  int nsymbt;
  float fbuf,*tmp_dens;
 
- if((fpin=fopen(filename,"rb")) == NULL){ 
-  fprintf(stderr,"Can't open %s\n",filename); 
-  return(true); 
+ if((fpin=fopen(filename,"rb")) == NULL){
+  fprintf(stderr,"Can't open %s\n",filename);
+  return(true);
  }
- 
+
  res=fread(&(mrc->xdim),sizeof(int),1,fpin);
  res=fread(&(mrc->ydim),sizeof(int),1,fpin);
  res=fread(&(mrc->zdim),sizeof(int),1,fpin);
@@ -177,7 +177,7 @@ bool readmrc(MRC *mrc, char *filename){//读取文件,调用permuted_index
  //197-208 ORIGIN
  res=fread(&(mrc->orgxyz),sizeof(float),3,fpin);
  //printf("#orgXYZ: %f %f %f\n",mrc->orgxyz[0],mrc->orgxyz[1],mrc->orgxyz[2]);
- 
+
  //ignore MAP 209-212
  char text[4];
  res=fread(text,sizeof(char)*4,1,fpin);
@@ -235,7 +235,7 @@ bool readmrc(MRC *mrc, char *filename){//读取文件,调用permuted_index
 
  //fin.ignore(4*(256-54)+nsymbt);
  fseek(fpin,4*(256-54)+nsymbt,SEEK_CUR);
- 
+
  	switch(mode) {
  	 case 0: // char - converted to float, testing for signed-ness
 	   printf("Cannot read mode 0 mrc file\n");
@@ -261,7 +261,7 @@ bool readmrc(MRC *mrc, char *filename){//读取文件,调用permuted_index
         mrc->widthy = mrc->ylen / (double) mrc->my;
         mrc->widthz = mrc->zlen / (double) mrc->mz;
 
-	if(fabs(mrc->widthx - mrc->widthy)>0.000001 || 
+	if(fabs(mrc->widthx - mrc->widthy)>0.000001 ||
 	 fabs(mrc->widthx -  mrc->widthz)>0.000001 ||
 	 fabs(mrc->widthy -  mrc->widthz)>0.000001){
 
@@ -327,17 +327,17 @@ bool fastVEC(MRC *m,MRC *M){
 
  if((M->vec=(double **)malloc(sizeof(double *)*Ndata))==NULL)
   return true;
- if((M->dens=(float *)malloc(sizeof(double)*Ndata))==NULL)
+ if((M->dens=(float *)calloc(Ndata, sizeof(float)))==NULL)
   return true;
  for(i=0;i<Ndata;i++){
-  if((M->vec[i]=(double *)malloc(sizeof(double)*3))==NULL)
+  if((M->vec[i]=(double *)calloc(3, sizeof(double)))==NULL)
   return true;
  }
 
  if((M->xyz=(int **)malloc(sizeof(int *)*Ndata))==NULL)
   return true;
  for(i=0;i<Ndata;i++){
-  if((M->xyz[i]=(int *)malloc(sizeof(int)*3))==NULL)
+  if((M->xyz[i]=(int *)calloc(3, sizeof(int)))==NULL)
   return true;
  }
 
@@ -473,7 +473,7 @@ bool fastVEC(MRC *m,MRC *M){
  }}}
  //puts("#End LDP");
 
-  
+
  //Add Average & STD
  M->dsum=dsum;
  M->Nact=Nact;
@@ -488,19 +488,19 @@ bool fastVEC(MRC *m,MRC *M){
  M->std_norm_ave=sqrt(dsum2);
  M->std=sqrt(dsum);
  printf("%f %f %f\n",M->ave,M->std,M->std_norm_ave);
- 
+
  for(int x=0;x<M->xdim;x++){
  for(int y=0;y<M->ydim;y++){
- for(int z=0;z<M->zdim;z++){    
+ for(int z=0;z<M->zdim;z++){
     ind=M->xdim*M->ydim*z+M->xdim*y+x;
     if(M->xyz[ind][0]!=0){
         printf("%d %d %d %d\n",ind,M->xyz[ind][0],M->xyz[ind][1],M->xyz[ind][2]);
         printf("%f %f %f %f\n",M->vec[ind][0],M->vec[ind][1],M->vec[ind][2],M->dens[ind]);
-    }   
- 
+    }
+
  }}}
 
- 
+
 
  return false;
 }
@@ -614,21 +614,20 @@ void ShowVec(MRC *M){
 
   //printf("H %8.3f%8.3f%8.3f\n",tmp[0],tmp[1],tmp[2]);
   printf("H       %f        %f        %f\n",tmp[0],tmp[1],tmp[2]);
-  
+
 
 
   tmp[0]=(x+M->vec[i][0])*M->widthx+M->orgxyz[0];
   tmp[1]=(y+M->vec[i][1])*M->widthx+M->orgxyz[1];
   tmp[2]=(z+M->vec[i][2])*M->widthx+M->orgxyz[2];
-  
+
   //printf("H %8.3f%8.3f%8.3f\n",tmp[0],tmp[1],tmp[2]);
   printf("H       %f        %f        %f\n",tmp[0],tmp[1],tmp[2]);
- 
-  
- }}}
- 
-}
 
+
+ }}}
+
+}
 
 
 

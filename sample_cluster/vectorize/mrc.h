@@ -42,4 +42,4 @@ void SetUpVoxSize(MRC *,MRC *,double,double);
 void ShowVec(MRC *);
 //	void ShowMrc(MRC *)
 
-	
+
