@@ -329,3 +329,37 @@ python script/Transform_map.py
 ./bin/CryoAlign_extract_keypoints --help
 ./bin/CryoAlign_alignment --help
 ```
+
+The alignment commands support two scoring modes:
+
+```text
+--score_mode single|multi
+--normal_weight VALUE
+--distance_weight VALUE
+--density_weight VALUE
+--shot_weight VALUE
+```
+
+`single` is the default and returns the normal-consistency score. `multi`
+combines normal consistency, point-distance similarity, local geometric-density
+similarity, and SHOT feature similarity. Multi-mode weights must be within
+`[0, 1]` and sum to `1.0`; their default values are `0.25` each.
+
+```bash
+# Single normal-consistency score
+./bin/CryoAlign_alignment ... \
+  --alg_type global \
+  --score_mode single
+
+# Weighted multidimensional score
+./bin/CryoAlign_alignment ... \
+  --alg_type global \
+  --score_mode multi \
+  --normal_weight 0.4 \
+  --distance_weight 0.2 \
+  --density_weight 0.2 \
+  --shot_weight 0.2
+```
+
+The same scoring options apply to both `--alg_type global` and
+`--alg_type mask`.

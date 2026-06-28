@@ -165,7 +165,44 @@ std::optional<double> average_shot_similarity(const Eigen::MatrixXd& A_key_feats
 
 }
 
-Registration::Registration() {
+bool ScoreConfig::Validate(std::string* error) const {
+    if (mode == ScoreMode::Single) {
+        return true;
+    }
+
+    const std::array<double, 4> values = {
+        weights.normal,
+        weights.distance,
+        weights.density,
+        weights.shot
+    };
+    for (double value : values) {
+        if (!std::isfinite(value) || value < 0.0 || value > 1.0) {
+            if (error) {
+                *error = "Each score weight must be finite and within [0, 1].";
+            }
+            return false;
+        }
+    }
+
+    const double sum = std::accumulate(values.begin(), values.end(), 0.0);
+    if (std::abs(sum - 1.0) > 1e-6) {
+        if (error) {
+            std::ostringstream message;
+            message << "Score weights must sum to 1.0; current sum is " << sum << ".";
+            *error = message.str();
+        }
+        return false;
+    }
+    return true;
+}
+
+Registration::Registration(const ScoreConfig& score_config)
+    : score_config_(score_config) {
+    std::string error;
+    if (!score_config_.Validate(&error)) {
+        throw std::invalid_argument(error);
+    }
     // Initialize Workspaces
 }
 Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data_dir,
@@ -249,6 +286,8 @@ Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data
 	std::cout << "cal_SHOT sussessfully" << std::endl;
 	// 寻找对应点
     auto [corrs_A, corrs_B] = find_correspondences(A_key_feats, B_key_feats);
+    std::optional<double> shot_similarity_score =
+        average_shot_similarity(A_key_feats, B_key_feats, corrs_A, corrs_B);
 	/*
 	// 打印 corrs_A
     std::cout << "corrs_A: ";
@@ -367,7 +406,7 @@ Eigen::Matrix4d Registration::Registration_given_feature(const std::string& data
     out_file.close();
 	*/
 	//std::cout << "res_id:" <<res_id<<";"<< "direct_alignment score:" << score<<";"<< "rmsd:"<< rmsd <<";"<<std::endl;
-	double score = cal_score(A_pcd, B_pcd, 10.0, T_icp);
+	double score = cal_score(A_pcd, B_pcd, 10.0, T_icp, shot_similarity_score);
 	std::cout << "direct_alignment score:" << score<<";"<<std::endl;
 	if (!source_pdb.empty() && !sup_pdb.empty()){
 		Eigen::MatrixXd source_Pdb = getPointsFromPDB(source_pdb);
@@ -851,12 +890,12 @@ void Registration::Registration_mask_list(const std::string& data_dir,
 					double start_time = omp_get_wtime(); // 获取开始时间
 					Eigen::Vector3d temp_center = center + Eigen::Vector3d(i, j, k);
 
-					// 假设 this->mask 已经初始化
-					this->mask["name"] = "sphere";
-					this->mask["center"] = temp_center;
-					this->mask["radius"] = radius;
+					std::unordered_map<std::string, std::variant<std::string, Eigen::Vector3d, double>> local_mask;
+					local_mask["name"] = std::string("sphere");
+					local_mask["center"] = temp_center;
+					local_mask["radius"] = radius;
 
-					auto [final_T, score] = Registration_mask(temp_dir, A_pcd, B_pcd, A_key_pcd, B_key_pcd, A_key_feats, B_key_feats, this->mask, max_correspondence_dist, VOXEL_SIZE, store_partial);
+					auto [final_T, score] = Registration_mask(temp_dir, A_pcd, B_pcd, A_key_pcd, B_key_pcd, A_key_feats, B_key_feats, local_mask, max_correspondence_dist, VOXEL_SIZE, store_partial);
 					if (final_T) {
 						#pragma omp critical
 						{
@@ -1384,15 +1423,8 @@ double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
     const bool has_normals =
         A_transformed.normals_.size() == A_transformed.points_.size() &&
         B_pcd.normals_.size() == B_pcd.points_.size();
-    const double safe_max_correspondence_dist = std::max(max_correspondence_dist, 1e-12);
 
     int valid_cosin_count = 0;
-    double distance_score = 0.0;
-    double density_score = 0.0;
-
-    open3d::geometry::KDTreeFlann A_kdtree(A_transformed);
-    open3d::geometry::KDTreeFlann B_kdtree(B_pcd);
-
     for (const auto& corr : eval_metric.correspondence_set_) {
         if (has_normals) {
             const double cosin_dist = A_transformed.normals_[corr[0]].dot(B_pcd.normals_[corr[1]]);
@@ -1400,7 +1432,25 @@ double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
                 valid_cosin_count++;
             }
         }
+    }
 
+    const double corr_count = static_cast<double>(eval_metric.correspondence_set_.size());
+    const double normal_score =
+        has_normals ? static_cast<double>(valid_cosin_count) / corr_count : 0.0;
+
+    if (score_config_.mode == ScoreMode::Single) {
+        std::cout << "Score mode: single" << std::endl;
+        std::cout << "Normal consistency score: " << normal_score << std::endl;
+        return normal_score;
+    }
+
+    const double safe_max_correspondence_dist = std::max(max_correspondence_dist, 1e-12);
+    double distance_score = 0.0;
+    double density_score = 0.0;
+    open3d::geometry::KDTreeFlann A_kdtree(A_transformed);
+    open3d::geometry::KDTreeFlann B_kdtree(B_pcd);
+
+    for (const auto& corr : eval_metric.correspondence_set_) {
         const double dist = (A_transformed.points_[corr[0]] - B_pcd.points_[corr[1]]).norm();
         distance_score += std::exp(-dist / safe_max_correspondence_dist);
 
@@ -1414,18 +1464,31 @@ double Registration::cal_score(const open3d::geometry::PointCloud& A_pcd,
         }
     }
 
-    const double corr_count = static_cast<double>(eval_metric.correspondence_set_.size());
-    const double normal_score = has_normals ? static_cast<double>(valid_cosin_count) / corr_count : 0.0;
     distance_score /= corr_count;
     density_score /= corr_count;
+    const double shot_score =
+        shot_similarity_score && std::isfinite(*shot_similarity_score)
+            ? std::clamp(*shot_similarity_score, 0.0, 1.0)
+            : 0.0;
 
-    std::vector<double> score_terms = {normal_score, distance_score, density_score};
-    if (shot_similarity_score && std::isfinite(*shot_similarity_score)) {
-        score_terms.push_back(std::clamp(*shot_similarity_score, 0.0, 1.0));
-    }
+    const ScoreWeights& weights = score_config_.weights;
+    const double score =
+        weights.normal * normal_score +
+        weights.distance * distance_score +
+        weights.density * density_score +
+        weights.shot * shot_score;
 
-    return std::accumulate(score_terms.begin(), score_terms.end(), 0.0) /
-           static_cast<double>(score_terms.size());
+    std::cout << "Score mode: multi" << std::endl;
+    std::cout << "Normal consistency score: " << normal_score
+              << " (weight " << weights.normal << ")" << std::endl;
+    std::cout << "Point distance score: " << distance_score
+              << " (weight " << weights.distance << ")" << std::endl;
+    std::cout << "Local density score: " << density_score
+              << " (weight " << weights.density << ")" << std::endl;
+    std::cout << "SHOT similarity score: " << shot_score
+              << " (weight " << weights.shot << ")" << std::endl;
+    std::cout << "Combined score: " << score << std::endl;
+    return score;
 }
 
 

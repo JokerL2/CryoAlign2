@@ -25,12 +25,13 @@ void direct_alignment(const std::string& temp_path,
                       std::optional<std::string> sup_pdb,
                       float voxel_size,
                       float feature_radius,
-                      const std::string& outnum) {
+                      const std::string& outnum,
+                      const ScoreConfig& score_config) {
     int mpi_rank = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
     if (mpi_rank != 0) return;
 
-    Registration dres;
+    Registration dres(score_config);
     Eigen::Matrix4d T;
     if (source_pdb && sup_pdb) {
         T = dres.Registration_given_feature(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, source_pdb.value(), sup_pdb.value(), voxel_size, feature_radius, outnum, false);
@@ -49,11 +50,12 @@ void mask_alignment(const std::string& temp_path,
                     std::optional<std::string> sup_pdb,
                     float voxel_size,
                     float feature_radius,
-                    const std::string& outnum) {
+                    const std::string& outnum,
+                    const ScoreConfig& score_config) {
     int mpi_rank = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
-    Registration mres;
+    Registration mres(score_config);
     mres.Registration_mask_list(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, voxel_size, feature_radius, outnum);
 
     if (mpi_rank == 0) {
@@ -72,7 +74,9 @@ void print_help() {
     std::cout << "Usage: CryoAlign_alignment --data_dir DIR --source_xyz XYZ --target_xyz XYZ "
               << "--source_sample TXT --target_sample TXT [--source_pdb PDB] "
               << "[--source_sup_pdb PDB] [--voxel_size 5.0] [--feature_radius 7.0] "
-              << "--alg_type global|mask" << std::endl;
+              << "--alg_type global|mask [--score_mode single|multi] "
+              << "[--normal_weight 0.25 --distance_weight 0.25 "
+              << "--density_weight 0.25 --shot_weight 0.25]" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -92,6 +96,7 @@ int main(int argc, char* argv[]) {
     bool has_sup_pdb = false;
     bool has_voxel_size = false;
     bool has_feature_radius = false;
+    ScoreConfig score_config;
 
     for (int i = 1; i < argc; i++) {
         string arg = argv[i];
@@ -122,6 +127,26 @@ int main(int argc, char* argv[]) {
             feature_radius = stof(argv[++i]);
         } else if (arg == "--alg_type" && i + 1 < argc) {
             alg_type = argv[++i];
+        } else if (arg == "--score_mode" && i + 1 < argc) {
+            const string mode = argv[++i];
+            if (mode == "single") {
+                score_config.mode = ScoreMode::Single;
+            } else if (mode == "multi") {
+                score_config.mode = ScoreMode::Multi;
+            } else {
+                if (mpi.is_root()) {
+                    cout << "Error: --score_mode must be single or multi." << endl;
+                }
+                return 1;
+            }
+        } else if (arg == "--normal_weight" && i + 1 < argc) {
+            score_config.weights.normal = stod(argv[++i]);
+        } else if (arg == "--distance_weight" && i + 1 < argc) {
+            score_config.weights.distance = stod(argv[++i]);
+        } else if (arg == "--density_weight" && i + 1 < argc) {
+            score_config.weights.density = stod(argv[++i]);
+        } else if (arg == "--shot_weight" && i + 1 < argc) {
+            score_config.weights.shot = stod(argv[++i]);
         } else {
             if (mpi.is_root()) {
                 cout << "Error: Invalid argument " << arg << endl;
@@ -138,6 +163,13 @@ int main(int argc, char* argv[]) {
         }
         return 1;
     }
+    std::string score_error;
+    if (!score_config.Validate(&score_error)) {
+        if (mpi.is_root()) {
+            cout << "Error: " << score_error << endl;
+        }
+        return 1;
+    }
 
     std::string source_xyz_path = data_dir + "/" + source_xyz;
     std::string target_xyz_path = data_dir + "/" + target_xyz;
@@ -151,12 +183,12 @@ int main(int argc, char* argv[]) {
         direct_alignment(data_dir, source_xyz_path, target_xyz_path, source_sample_path, target_sample_path,
                          has_source_pdb ? source_pdb : std::nullopt,
                          has_sup_pdb ? sup_pdb : std::nullopt,
-                         effective_voxel_size, effective_feature_radius, outnum);
+                         effective_voxel_size, effective_feature_radius, outnum, score_config);
     } else if (alg_type == "mask") {
         mask_alignment(data_dir, source_xyz_path, target_xyz_path, source_sample_path, target_sample_path,
                        has_source_pdb ? source_pdb : std::nullopt,
                        has_sup_pdb ? sup_pdb : std::nullopt,
-                       effective_voxel_size, effective_feature_radius, outnum);
+                       effective_voxel_size, effective_feature_radius, outnum, score_config);
     } else {
         if (mpi.is_root()) {
             cout << "Error: Invalid alg_type " << alg_type << endl;

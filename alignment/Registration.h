@@ -19,10 +19,30 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/features/shot.h>
+
+enum class ScoreMode {
+    Single,
+    Multi
+};
+
+struct ScoreWeights {
+    double normal = 0.25;
+    double distance = 0.25;
+    double density = 0.25;
+    double shot = 0.25;
+};
+
+struct ScoreConfig {
+    ScoreMode mode = ScoreMode::Single;
+    ScoreWeights weights;
+
+    bool Validate(std::string* error = nullptr) const;
+};
+
 class Registration {
 public:
     // Constructor
-    Registration();
+    explicit Registration(const ScoreConfig& score_config = ScoreConfig());
 	Eigen::MatrixXd computeSHOTFeatures(const std::string& pointCloudFilename,
                                         const std::string& normalFilename,
                                         const std::string& keypointFilename,
@@ -104,6 +124,7 @@ public:
 	void extract_top_K(const std::string& record_dir, const std::string& record_T_dir, int K, const std::string& save_dir, const std::string& source_pdb_dir = "", const std::string& source_sup_dir = "");
 	double cal_pdb_RMSD(const std::string& source_pdb_dir,const std::string& source_sup_dir,Eigen::Matrix4d T);
 private:
+    ScoreConfig score_config_;
     std::unordered_map<std::string,std::variant<std::string, Eigen::Vector3d, double>> mask;
 };
 
