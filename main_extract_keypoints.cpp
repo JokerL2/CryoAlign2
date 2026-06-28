@@ -125,8 +125,16 @@ void Sample_cluster(const std::string& data_dir, const std::string& map_name, fl
 }
 
 void print_help() {
-    std::cout << "Usage: CryoAlign_extract_keypoints --data_dir DIR --map_name MAP --contour_level LEVEL "
-              << "[--voxel_size 5.0] [--use_gpu|--cpu]" << std::endl;
+    std::cout << "Usage: CryoAlign_extract_keypoints [data dir] [source.map] [source contour level] [target.map] [target contour level] [voxel_size]" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --data_dir: Map file path." << std::endl;
+    std::cout << "  --map_name: Source emdb num." << std::endl;
+    std::cout << "  --contour_level: Author recommend contour level." << std::endl;
+	std::cout << "  --voxel_size: Sampling interval.(defaults 5.0)" << std::endl;
+	std::cout << std::endl;
+	std::cout << "Example:" << std::endl;
+	std::cout << "  CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3695_emd_3696/ --map_name EMD-3695.map --contour_level 0.008 --voxel_size 5.0" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
