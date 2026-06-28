@@ -196,12 +196,32 @@ void mask_alignment(const std::string& temp_path,
 }
 
 void print_help() {
-    std::cout << "Usage: CryoAlign --data_dir DIR --source_map MAP --source_contour_level LEVEL "
-              << "--target_map MAP --target_contour_level LEVEL [--source_pdb PDB] "
-              << "[--source_sup_pdb PDB] [--voxel_size 5.0] [--feature_radius 7.0] "
-              << "[--use_gpu|--cpu] --alg_type global|mask [--score_mode single|multi] "
-              << "[--normal_weight 0.25 --distance_weight 0.25 "
-              << "--density_weight 0.25 --shot_weight 0.25]" << std::endl;
+    std::cout << "Usage: CryoAlign [data dir] [source.map] [source contour level] [target.map]" << std::endl;
+    std::cout << "[target contour level] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius] [alg_type]" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Options:" << std::endl;
+    std::cout << "  --data_dir: Map file path." << std::endl;
+    std::cout << "  --source_map: Source emdb num." << std::endl;
+    std::cout << "  --source_contour_level: Author recommend contour level." << std::endl;
+    std::cout << "  --target_map: Target emdb num." << std::endl;
+    std::cout << "  --target_contour_level: Author recommend contour level." << std::endl;
+    std::cout << "  --source_pdb(optional): Source pdb name." << std::endl;
+    std::cout << "  --source_sup_pdb(optional): Transformed source pdb name (ground truth)." << std::endl;
+	std::cout << "  --voxel_size: Sampling interval.(defaults 5.0)" << std::endl;
+	std::cout << "  --feature_radius: Radius for feature construction.(defaults 7.0)" << std::endl;
+    std::cout << "  --alg_type: Global_alignment or Mask_alignment." << std::endl;
+    std::cout << "  --score_mode: single or multi (default: single)." << std::endl;
+    std::cout << "  --normal_weight: Normal consistency weight for multi mode (default: 0.25)." << std::endl;
+    std::cout << "  --distance_weight: Point distance weight for multi mode (default: 0.25)." << std::endl;
+    std::cout << "  --density_weight: Local geometric density weight for multi mode (default: 0.25)." << std::endl;
+    std::cout << "  --shot_weight: SHOT similarity weight for multi mode (default: 0.25)." << std::endl;
+    std::cout << "  Multi-mode weights must be in [0, 1] and sum to 1." << std::endl;
+	std::cout << std::endl;
+	std::cout << "Example:" << std::endl;
+	std::cout << "  For Global_alignment:" << std::endl;
+	std::cout << "  CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type global" << std::endl;
+	std::cout << "  For Mask_alignment:" << std::endl;
+	std::cout << "  CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type mask" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
