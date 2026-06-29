@@ -208,7 +208,7 @@ mpirun -np 4 ./bin/CryoAlign \
   --voxel_size 5.0 \
   --feature_radius 7.0 \
   --alg_type global \
-  --score_mode single \
+  --score_mode mask \
   --cpu
 ```
 
@@ -225,7 +225,7 @@ OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   --voxel_size 5.0 \
   --feature_radius 7.0 \
   --alg_type global \
-  --score_mode single \
+  --score_mode mask \
   --use_gpu
 ```
 
