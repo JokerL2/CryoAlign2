@@ -229,9 +229,9 @@ void print_help() {
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "  CPU + MPI (4 ranks):" << std::endl;
-    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type global --cpu" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --cpu" << std::endl;
     std::cout << "  GPU (single process):" << std::endl;
-    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type global --use_gpu" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --use_gpu" << std::endl;
     std::cout << "  Do not launch GPU mode with multiple MPI ranks on one GPU." << std::endl;
 }
 
