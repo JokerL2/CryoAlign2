@@ -125,16 +125,26 @@ void Sample_cluster(const std::string& data_dir, const std::string& map_name, fl
 }
 
 void print_help() {
-    std::cout << "Usage: CryoAlign_extract_keypoints [data dir] [source.map] [source contour level] [target.map] [target contour level] [voxel_size]" << std::endl;
+    std::cout << "Usage: CryoAlign_extract_keypoints --data_dir DIR --map_name MAP --contour_level LEVEL "
+              << "[--voxel_size 5.0] [--use_gpu|--cpu]" << std::endl;
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  --data_dir: Map file path." << std::endl;
     std::cout << "  --map_name: Source emdb num." << std::endl;
     std::cout << "  --contour_level: Author recommend contour level." << std::endl;
 	std::cout << "  --voxel_size: Sampling interval.(defaults 5.0)" << std::endl;
+    std::cout << "  --use_gpu: Use GPU convolution and mean shift (single process)." << std::endl;
+    std::cout << "  --cpu: Force the CPU path." << std::endl;
 	std::cout << std::endl;
 	std::cout << "Example:" << std::endl;
 	std::cout << "  CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3695_emd_3696/ --map_name EMD-3695.map --contour_level 0.008 --voxel_size 5.0" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Examples:" << std::endl;
+    std::cout << "  CPU + MPI (4 ranks):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3661_emd_6647/ --map_name emd_6647.map --contour_level 0.017 --voxel_size 5.0 --cpu" << std::endl;
+    std::cout << "  GPU (single process):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./CryoAlign_extract_keypoints --data_dir ../../example_dataset/emd_3661_emd_6647/ --map_name emd_6647.map --contour_level 0.017 --voxel_size 5.0 --use_gpu" << std::endl;
+    std::cout << "  Do not launch GPU mode with multiple MPI ranks on one GPU." << std::endl;
 }
 
 int main(int argc, char* argv[]) {

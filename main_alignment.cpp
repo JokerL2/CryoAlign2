@@ -34,9 +34,9 @@ void direct_alignment(const std::string& temp_path,
     Registration dres(score_config);
     Eigen::Matrix4d T;
     if (source_pdb && sup_pdb) {
-        T = dres.Registration_given_feature(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, source_pdb.value(), sup_pdb.value(), voxel_size, feature_radius, outnum, false);
+        T = dres.Registration_given_feature(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, source_pdb.value(), sup_pdb.value(), voxel_size, feature_radius, outnum);
     } else {
-        T = dres.Registration_given_feature(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, "", "", voxel_size, feature_radius, outnum, false);
+        T = dres.Registration_given_feature(temp_path, source_key_dir, target_key_dir, source_sample_dir, target_sample_dir, "", "", voxel_size, feature_radius, outnum);
     }
     std::cout << "Estimated transformation: \n" << T << std::endl;
 }
@@ -71,8 +71,12 @@ void mask_alignment(const std::string& temp_path,
 }
 
 void print_help() {
-    std::cout << "Usage: CryoAlign_alignment [data dir] [source_xyz] [target_xyz] [source_sample]" << std::endl;
-    std::cout << "[target_samplel] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius] [alg_type]" << std::endl;
+    std::cout << "Usage: CryoAlign_alignment --data_dir DIR --source_xyz XYZ --target_xyz XYZ "
+              << "--source_sample TXT --target_sample TXT [--source_pdb PDB] "
+              << "[--source_sup_pdb PDB] [--voxel_size 5.0] [--feature_radius 7.0] "
+              << "--alg_type global|mask [--score_mode single|multi] "
+              << "[--normal_weight 0.25 --distance_weight 0.25 "
+              << "--density_weight 0.25 --shot_weight 0.25]" << std::endl;
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  --data_dir: Map file path." << std::endl;
@@ -97,6 +101,20 @@ void print_help() {
 	std::cout << "  CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type global" << std::endl;
 	std::cout << "  For Mask_alignment:" << std::endl;
 	std::cout << "  CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type mask" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Scoring:" << std::endl;
+    std::cout << "  single: normal consistency only (default)." << std::endl;
+    std::cout << "  multi: weighted normal consistency, point distance similarity, local geometric density similarity, and SHOT feature similarity." << std::endl;
+    std::cout << "  Multi-mode weights must be in [0, 1] and sum to 1. Both score modes support global and mask." << std::endl;
+    std::cout << std::endl;
+    std::cout << "Examples:" << std::endl;
+    std::cout << "  Global alignment with the single score:" << std::endl;
+    std::cout << "  ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type global --score_mode single" << std::endl;
+    std::cout << "  Mask alignment with the multidimensional score:" << std::endl;
+    std::cout << "  ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --score_mode multi --normal_weight 0.4 --distance_weight 0.2 --density_weight 0.2 --shot_weight 0.2" << std::endl;
+    std::cout << "  Mask alignment with MPI (4 ranks):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_xyz Points_3661_Key.xyz --target_xyz Points_6647_5.00_Key.xyz --source_sample emd_3661_5.00.txt --target_sample emd_6647_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --score_mode single" << std::endl;
+    std::cout << "GPU is used only by CryoAlign and CryoAlign_extract_keypoints, not by CryoAlign_alignment." << std::endl;
 }
 
 int main(int argc, char* argv[]) {

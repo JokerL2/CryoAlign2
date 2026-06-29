@@ -196,8 +196,12 @@ void mask_alignment(const std::string& temp_path,
 }
 
 void print_help() {
-    std::cout << "Usage: CryoAlign [data dir] [source.map] [source contour level] [target.map]" << std::endl;
-    std::cout << "[target contour level] [source.pdb] [source sup.pdb] [voxel_size] [feature_radius] [alg_type]" << std::endl;
+    std::cout << "Usage: CryoAlign --data_dir DIR --source_map MAP --source_contour_level LEVEL "
+              << "--target_map MAP --target_contour_level LEVEL [--source_pdb PDB] "
+              << "[--source_sup_pdb PDB] [--voxel_size 5.0] [--feature_radius 7.0] "
+              << "[--use_gpu|--cpu] --alg_type global|mask [--score_mode single|multi] "
+              << "[--normal_weight 0.25 --distance_weight 0.25 "
+              << "--density_weight 0.25 --shot_weight 0.25]" << std::endl;
     std::cout << std::endl;
     std::cout << "Options:" << std::endl;
     std::cout << "  --data_dir: Map file path." << std::endl;
@@ -222,6 +226,13 @@ void print_help() {
 	std::cout << "  CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type global" << std::endl;
 	std::cout << "  For Mask_alignment:" << std::endl;
 	std::cout << "  CryoAlign --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_map EMD-3695.map --source_contour_level 0.008 --target_map EMD-3696.map --target_contour_level 0.002 --source_pdb 5nsr.pdb --source_sup_pdb 5nsr_sup.pdb --voxel_size 5.0 --feature_radius 7.0 --alg_type mask" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Examples:" << std::endl;
+    std::cout << "  CPU + MPI (4 ranks):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type global --cpu" << std::endl;
+    std::cout << "  GPU (single process):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type global --use_gpu" << std::endl;
+    std::cout << "  Do not launch GPU mode with multiple MPI ranks on one GPU." << std::endl;
 }
 
 int main(int argc, char* argv[]) {
