@@ -41,7 +41,15 @@ std::string voxel_size_string(float voxel_size) {
 
 void Sample_cluster(const std::string& data_dir, const std::string& map_name, float threshold, float voxel_size) {
     int mpi_rank = 0;
+    int mpi_size = 1;
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
+
+    const char* gpu_root_only_env = std::getenv("CRYOALIGN_GPU_MPI_ROOT_ONLY");
+    const bool gpu_root_only =
+        mpi_size > 1 &&
+        gpu_root_only_env != nullptr &&
+        std::string(gpu_root_only_env) != "0";
 
     VoxEM voxem;
     std::array<float, 3> shifting = {0.0f, 0.0f, 0.0f};
@@ -68,6 +76,10 @@ void Sample_cluster(const std::string& data_dir, const std::string& map_name, fl
     }
     MPI_Bcast(&sample_status, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if (sample_status != 0) {
+        return;
+    }
+    if (gpu_root_only && mpi_rank != 0) {
+        MPI_Barrier(MPI_COMM_WORLD);
         return;
     }
 
@@ -134,7 +146,10 @@ void Sample_cluster(const std::string& data_dir, const std::string& map_name, fl
         voxem.Point_Transform_DBSCAN(voxel_size, 2, "Meanshift", "DBSCAN", true, 100);
         voxem.IO_WriteXYZ("DBSCAN", file_outputname, "H", shifting);
         std::cout << "Sampling and clustering success" << std::endl;
-    } else {
+    }
+    if (gpu_root_only) {
+        MPI_Barrier(MPI_COMM_WORLD);
+    } else if (mpi_rank != 0) {
         while (!std::filesystem::exists(file_outputname)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
         }
@@ -214,6 +229,8 @@ void print_help() {
 	std::cout << "  --voxel_size: Sampling interval.(defaults 5.0)" << std::endl;
 	std::cout << "  --feature_radius: Radius for feature construction.(defaults 7.0)" << std::endl;
     std::cout << "  --alg_type: Global_alignment or Mask_alignment." << std::endl;
+    std::cout << "  --use_gpu: Use GPU sampling. With multiple MPI ranks, only rank 0 uses the GPU." << std::endl;
+    std::cout << "  --cpu: Force CPU sampling." << std::endl;
     std::cout << "  --score_mode: single or multi (default: single)." << std::endl;
     std::cout << "  --normal_weight: Normal consistency weight for multi mode (default: 0.25)." << std::endl;
     std::cout << "  --distance_weight: Point distance weight for multi mode (default: 0.25)." << std::endl;
@@ -232,7 +249,8 @@ void print_help() {
     std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --cpu" << std::endl;
     std::cout << "  GPU (single process):" << std::endl;
     std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --use_gpu" << std::endl;
-    std::cout << "  Do not launch GPU mode with multiple MPI ranks on one GPU." << std::endl;
+    std::cout << "  GPU sampling on rank 0 + MPI mask alignment (4 ranks):" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_map emd_3661.map --source_contour_level 0.07 --target_map emd_6647.map --target_contour_level 0.017 --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --use_gpu" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -342,9 +360,19 @@ int main(int argc, char* argv[]) {
     if (request_gpu) {
         setenv("CRYOALIGN_USE_GPU", "1", 1);
         unsetenv("CRYOALIGN_DISABLE_GPU");
+        if (mpi.size() > 1) {
+            setenv("CRYOALIGN_GPU_MPI_ROOT_ONLY", "1", 1);
+            if (mpi.is_root()) {
+                std::cout << "Hybrid mode enabled: GPU sampling on MPI rank 0, then MPI alignment with "
+                          << mpi.size() << " ranks." << std::endl;
+            }
+        } else {
+            unsetenv("CRYOALIGN_GPU_MPI_ROOT_ONLY");
+        }
     } else if (force_cpu) {
         setenv("CRYOALIGN_USE_GPU", "0", 1);
         setenv("CRYOALIGN_DISABLE_GPU", "1", 1);
+        unsetenv("CRYOALIGN_GPU_MPI_ROOT_ONLY");
     }
 
     Sample_cluster(data_dir, map_name1, threshold1, effective_voxel_size);

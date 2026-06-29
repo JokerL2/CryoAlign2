@@ -440,6 +440,16 @@ void VoxEM::Point_Create_Meanshift_sample(float lower_bound, int window, float b
 
     const bool gpu_requested = env_flag_enabled("CRYOALIGN_USE_GPU");
     const bool gpu_disabled = env_flag_enabled("CRYOALIGN_DISABLE_GPU");
+    const bool gpu_mpi_root_only =
+        gpu_requested &&
+        !gpu_disabled &&
+        mpi_rank == 0 &&
+        mpi_size > 1 &&
+        env_flag_enabled("CRYOALIGN_GPU_MPI_ROOT_ONLY");
+    if (gpu_mpi_root_only) {
+        // Other ranks wait in the caller until rank 0 finishes GPU sampling.
+        mpi_size = 1;
+    }
     if (gpu_requested && gpu_disabled && mpi_rank == 0) {
         std::cout << "GPU requested but CRYOALIGN_DISABLE_GPU is set; using CPU path." << std::endl;
     }
