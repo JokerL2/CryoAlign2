@@ -2,7 +2,7 @@
 
 CryoAlign2 is an alignment-based tool for global and local Cryo-EM density-map retrieval. It converts density maps into sampled point clouds, extracts structural keypoints, performs 3D alignment, and evaluates aligned maps using configurable similarity scores.
 
-Sampling is built into CryoAlign2. CPU convolution and local alignment can be accelerated with MPI, while CUDA sampling is available as an optional runtime mode.
+Sampling is built into CryoAlign2. CPU convolution and local alignment can be accelerated with MPI. CUDA sampling is available as an optional runtime mode and can be combined with MPI mask alignment.
 
 ## Installation
 
@@ -82,7 +82,7 @@ Use `--cpu` or `--no_gpu` to explicitly force CPU execution.
 
 ### CPU with MPI
 
-MPI accelerates CPU convolution during sampling and distributes local alignment tasks. Limit each MPI rank to one BLAS/OpenMP thread to avoid CPU oversubscription:
+MPI accelerates CPU convolution during sampling and distributes mask alignment tasks. Limit each MPI rank to one BLAS/OpenMP thread to avoid CPU oversubscription:
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
@@ -94,7 +94,7 @@ mpirun -np 4 ./bin/CryoAlign_extract_keypoints \
   --cpu
 ```
 
-### GPU
+### GPU Sampling
 
 GPU sampling is enabled with `--use_gpu` or `--gpu`:
 
@@ -108,15 +108,42 @@ OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   --use_gpu
 ```
 
-Use one process per GPU. Do not launch multiple MPI ranks on the same GPU. If GPU mode is requested with multiple MPI ranks, CryoAlign2 falls back to the CPU/MPI path.
+For the standalone `CryoAlign_extract_keypoints` executable, use one process per GPU. Running it with multiple MPI ranks and `--use_gpu` falls back to CPU/MPI sampling.
 
-The CPU/MPI path is recommended when exact reproducibility is required. GPU floating-point calculations may produce small mean-shift coordinate differences, which can affect DBSCAN boundary points and the selected alignment.
+### GPU Sampling with MPI Alignment
+
+The complete `CryoAlign` executable supports hybrid execution:
+
+1. MPI rank 0 performs sampling and mean shift on the GPU.
+2. Other MPI ranks wait without accessing the GPU.
+3. After both maps are sampled, all ranks participate in mask alignment.
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+mpirun -np 4 ./bin/CryoAlign \
+  --data_dir ../../example_dataset/emd_3661_emd_6647 \
+  --source_map emd_3661.map \
+  --source_contour_level 0.07 \
+  --target_map emd_6647.map \
+  --target_contour_level 0.017 \
+  --voxel_size 5.0 \
+  --feature_radius 7.0 \
+  --alg_type mask \
+  --score_mode single \
+  --use_gpu
+```
+
+This mode uses only one GPU, regardless of the number of MPI ranks.
+
+MPI acceleration of the alignment stage applies to `--alg_type mask`. Global alignment is executed primarily by rank 0.
+
+The CPU/MPI path is recommended when exact sampling reproducibility is required. GPU floating-point calculations may produce small mean-shift coordinate differences, which can affect DBSCAN boundary points and the selected alignment.
 
 ## Scoring Modes
 
 Both `global` and `mask` alignment support two scoring modes.
 
-### Single score
+### Single Score
 
 `single` is the default mode and returns the normal-consistency score:
 
@@ -125,7 +152,7 @@ score = number of correspondences with normal cosine similarity >= 0.6
         / total number of correspondences
 ```
 
-### Multidimensional score
+### Multidimensional Score
 
 `multi` combines four metrics:
 
@@ -154,7 +181,7 @@ Every weight must be within `[0, 1]`, and all four weights must sum to `1.0`. Th
 
 1. Density-map sampling
 2. Keypoint extraction
-3. Global or local alignment
+3. Global or mask alignment
 4. Similarity scoring
 
 Usage:
@@ -191,11 +218,11 @@ Important options:
 - `--voxel_size`: Sampling interval in angstroms. Default: `5.0`.
 - `--feature_radius`: Radius used to construct local features. Default: `7.0`.
 - `--alg_type`: `global` for global alignment or `mask` for local alignment.
-- `--use_gpu`: Enable GPU sampling.
+- `--use_gpu`: Enable GPU sampling. With MPI, only rank 0 uses the GPU.
 - `--cpu`: Force CPU sampling.
 - `--score_mode`: `single` or `multi`. Default: `single`.
 
-CPU and MPI complete-workflow example:
+CPU sampling and MPI mask alignment:
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
@@ -207,12 +234,12 @@ mpirun -np 4 ./bin/CryoAlign \
   --target_contour_level 0.017 \
   --voxel_size 5.0 \
   --feature_radius 7.0 \
-  --alg_type global \
-  --score_mode mask \
+  --alg_type mask \
+  --score_mode single \
   --cpu
 ```
 
-GPU complete-workflow example:
+GPU sampling with single-process mask alignment:
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
@@ -224,8 +251,25 @@ OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   --target_contour_level 0.017 \
   --voxel_size 5.0 \
   --feature_radius 7.0 \
-  --alg_type global \
-  --score_mode mask \
+  --alg_type mask \
+  --score_mode single \
+  --use_gpu
+```
+
+GPU sampling on rank 0 with four-rank MPI mask alignment:
+
+```bash
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+mpirun -np 4 ./bin/CryoAlign \
+  --data_dir ../../example_dataset/emd_3661_emd_6647 \
+  --source_map emd_3661.map \
+  --source_contour_level 0.07 \
+  --target_map emd_6647.map \
+  --target_contour_level 0.017 \
+  --voxel_size 5.0 \
+  --feature_radius 7.0 \
+  --alg_type mask \
+  --score_mode single \
   --use_gpu
 ```
 
@@ -342,7 +386,7 @@ Mask alignment with MPI:
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
 mpirun -np 4 ./bin/CryoAlign_alignment \
   --data_dir ../../example_dataset/emd_3661_emd_6647 \
-  --source_xyz Points_3661_Key.xyz \
+  --source_xyz Points_3661_5.00_Key.xyz \
   --target_xyz Points_6647_5.00_Key.xyz \
   --source_sample emd_3661_5.00.txt \
   --target_sample emd_6647_5.00.txt \
@@ -356,7 +400,7 @@ The same scoring options apply to both `--alg_type global` and `--alg_type mask`
 
 ## Retrieval Workflow
 
-### Build a retrieval database
+### Build a Retrieval Database
 
 Use `CryoAlign_extract_keypoints` to generate sampled point clouds and keypoint files:
 
@@ -366,7 +410,7 @@ python script/CreateDB.py
 
 Generated files can be organized like the contents of `database example/`.
 
-### Perform retrieval
+### Perform Retrieval
 
 ```bash
 python script/CryoSearch.py
@@ -374,7 +418,7 @@ python script/CryoSearch.py
 
 The retrieval script writes density-map similarity scores to `res.txt`.
 
-### Overlay density maps
+### Overlay Density Maps
 
 ```bash
 python script/Transform_map.py
