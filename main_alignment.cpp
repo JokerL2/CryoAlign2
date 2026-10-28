@@ -113,7 +113,7 @@ void print_help() {
     std::cout << "  Mask alignment with the multidimensional score:" << std::endl;
     std::cout << "  ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3695_emd_3696/ --source_xyz Points_3695_5.00_Key.xyz --target_xyz Points_3696_5.00_Key.xyz --source_sample EMD-3695_5.00.txt --target_sample EMD-3696_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --score_mode multi --normal_weight 0.4 --distance_weight 0.2 --density_weight 0.2 --shot_weight 0.2" << std::endl;
     std::cout << "  Mask alignment with MPI (4 ranks):" << std::endl;
-    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_xyz Points_3661_Key.xyz --target_xyz Points_6647_5.00_Key.xyz --source_sample emd_3661_5.00.txt --target_sample emd_6647_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --score_mode single" << std::endl;
+    std::cout << "  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 mpirun -np 4 ./CryoAlign_alignment --data_dir ../../example_dataset/emd_3661_emd_6647/ --source_xyz Points_3661_5.00_Key.xyz --target_xyz Points_6647_5.00_Key.xyz --source_sample emd_3661_5.00.txt --target_sample emd_6647_5.00.txt --voxel_size 5.0 --feature_radius 7.0 --alg_type mask --score_mode single" << std::endl;
     std::cout << "GPU is used only by CryoAlign and CryoAlign_extract_keypoints, not by CryoAlign_alignment." << std::endl;
 }
 
